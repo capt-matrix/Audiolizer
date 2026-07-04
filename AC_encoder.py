@@ -1,6 +1,7 @@
 import re
 import json
 import os
+import random
 from assets import ROOT,CONFIG,CHORDS,TPQN,HEX,STRINGS,SF,save
 from server import log
 # X-3-2-0-1-0.F ; this is an acode line [frame]. the 6 numbers separated by - represents states of 6 strings [E-e] at that frame, and F is function going on at that frame
@@ -40,6 +41,11 @@ class Song:
           
           self.soundfont=SF
           self.song=[]
+          
+          self.humanize_timing=0.0
+          self.humanize_velocity=0
+          self.strum_spread_down=0.12
+          self.strum_spread_up=0.10
           
           self.chords={}
           self.sequence={
@@ -214,6 +220,24 @@ class Song:
                     self.instrument=int(I[1])
                elif I[0] == 'SF':
                     self.soundfont=clean(I[1])
+               elif I[0] == 'HUMANIZE':
+                    parts=I[1].split(',')
+                    for part in parts:
+                         kv=part.split(':')
+                         k=clean(kv[0])
+                         if k=='timing':
+                              self.humanize_timing=float(clean(kv[1]))
+                         elif k=='velocity':
+                              self.humanize_velocity=int(clean(kv[1]))
+               elif I[0] == 'STRUM_SPREAD':
+                    parts=I[1].split(',')
+                    for part in parts:
+                         kv=part.split(':')
+                         k=clean(kv[0])
+                         if k=='down':
+                              self.strum_spread_down=float(clean(kv[1]))
+                         elif k=='up':
+                              self.strum_spread_up=float(clean(kv[1]))
                elif I[0] == 'SONG':
                     I[1]=clean(I[1],'|#')
                     for segment in self.parse_song(I[1]):
@@ -260,6 +284,8 @@ class Song:
                          
                writeb(frame,func,timept)
                line+=1
+               if self.humanize_timing>0:
+                    dur*=1+random.uniform(-self.humanize_timing,self.humanize_timing)
                timept+=round(float(dur)*self.TPB)
                return ['E','A','D','G','B','e'],'F'
           

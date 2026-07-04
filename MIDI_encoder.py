@@ -5,6 +5,7 @@ from midiutil import MIDIFile
 
 import os
 import subprocess
+import random
 
 
 
@@ -29,17 +30,26 @@ class Audio():
           prev=None
           prev_vol=100
           
+          def jitter_vol(volume):
+               if self.humanize_velocity>0:
+                    volume+=random.randint(-self.humanize_velocity,self.humanize_velocity)
+               return max(0,min(127,volume))
+          
           def add_pick(timept, frame,dur, volume):
                for ind in range(6):
                     i = frame[ind]
                     pitch = list(STRINGS.values())[ind][1]
                     if i != 'X':
                          pitch += int(i)
-                         self.MIDI.addNote(0, ind, pitch, timept,dur, volume)
+                         vol=jitter_vol(volume)
+                         self.MIDI.addNote(0, ind, pitch, timept,dur, vol)
           
-          def add_strum(timept,frame,func,dur,volume,delay_factor=0.15):
+          def add_strum(timept,frame,func,dur,volume):
                if (6-frame.count('X'))==0:
                     return
+               
+               delay_factor=self.strum_spread_down if func=='D' else self.strum_spread_up
+               delay_factor*=1+random.uniform(-0.2,0.2)
                
                delay_per_string = (delay_factor * dur) / (6-frame.count('X'))
                delay = 0
@@ -58,16 +68,17 @@ class Audio():
                          pitch=list(STRINGS.values())[string_idx][1]+int(i)
                          note=list(STRINGS.keys())[ind]+i
                          timept_= timept + round(delay)
-                         self.MIDI.addNote(0,ind,pitch,timept_,dur,volume,note)    
+                         vol=jitter_vol(volume)
+                         self.MIDI.addNote(0,ind,pitch,timept_,dur,vol,note)    
                          delay+=delay_per_string
                          
           def add_hit(timept,frame,dur,basevol,fader=12):
-               if frame is None:
+               if frame is None or dur<=0:
                     return
-               fade = dur / fader
+               fade = max(1, round(dur / fader))
                for step in range(fader):
                     volume = int(basevol*(1.0 - (step / fader) * (1-0.25)))
-                    timept_=timept+step*fade
+                    timept_= round(timept + step * fade)
                     for ind in range(6):
                          i = frame[ind]
                          if i != 'X':
@@ -98,14 +109,13 @@ class Audio():
                     add_pick(timept,frame,dur,100)
                     prev=frame
                     prev_vol=100
-                    
-               elif func in ['D','U','H']:
-                    add_strum(timept,frame,func,dur,100)
-                    prev=frame
-                    prev_vol=100
                elif func=='H':
                     add_hit(timept,prev,dur,prev_vol)
                     prev_vol=int(prev_vol*0.5)
+               elif func in ['D','U']:
+                    add_strum(timept,frame,func,dur,100)
+                    prev=frame
+                    prev_vol=100
                ind+=1
      def write_MIDI(self):
           self.parse_ACode2midi()

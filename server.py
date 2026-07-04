@@ -35,12 +35,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                return
 
           with lock:
+               last_active = time.time()
                if self.path == '/cli_command':
                     last_command = data.get('command')
                elif self.path == '/config':
                     last_config = data.get('config')
-               elif self.path == '/heartbeat':
-                    last_active = time.time() 
           self.send_response(200)
           self.end_headers()
 
@@ -73,7 +72,7 @@ def monitor():
           time.sleep(10)
           with lock:
                inact_time=time.time() - last_active
-          if inact_time > 120:
+          if inact_time > 300:
                parentps=psutil.Process(os.getpid())
                for child in parentps.children(recursive=True):
                     child.kill()
