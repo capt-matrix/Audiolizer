@@ -4,23 +4,35 @@ import os
 import shutil
 import ctypes
 import subprocess
+import sys
+import certifi
 
 Appname='Audiolizer'
 Author='captain_matrix'
 ROOT=user_data_dir(appname=Appname,appauthor=Author)
 SAVE=os.path.join(user_downloads_dir(),Appname)
+
 def make():
      os.makedirs(ROOT,exist_ok=True)
      os.makedirs(SAVE,exist_ok=True)
+     os.makedirs(INPUT,exist_ok=True)
+
+def resource_path(relative_path):
+     try :
+          base = sys._MEIPASS
+     except:
+          base = os.path.abspath('.')
+     return os.path.join(base, relative_path)
 
 def set():
      if platform.system()=='Darwin':
-          os.chmod(os.path.join(DEPS,'fluidsynth'),0o755)
-          os.chmod(os.path.join(DEPS,'ffmpeg'),0o755)
+          os.chmod(os.path.join(BINS,'fluidsynth'),0o755)
+          os.chmod(os.path.join(BINS,'ffmpeg'),0o755)
+          
+#Screen resizer
 
 aspect=[16,9]
 WIDTH,HEIGHT=(1440,810)
-
 def _scaleWH(w,h):
      w_,h_=w,h
      if h==min(w,h):
@@ -28,8 +40,6 @@ def _scaleWH(w,h):
      else:
           h_=round((aspect[1]/aspect[0])*w)
      return [w_,h_]
-     
-
 if platform.system()=='Darwin':
     result=subprocess.run(['system_profiler','SPDisplaysDataType'],capture_output=True,text=True)
     width=WIDTH
@@ -63,23 +73,35 @@ elif platform.system()=='Windows':
     WIDTH,HEIGHT=_scaleWH(WIDTH,HEIGHT)
 
 
-INPUT=os.path.join(ROOT,'page')
-FONTS=os.path.join(ROOT,'Fonts')
-DEPS=os.path.join(ROOT,'dependencies')
+FONTS = resource_path('Fonts')
+BINS  = resource_path('DEPS')
+
+
+DEPS = os.path.join(ROOT,'dependencies')
 
 CONFIG=os.path.join(ROOT,'config.txt')
-SF=os.path.join(ROOT,'dependencies','FluidR3.sf2')
-CHORDS=os.path.join(ROOT,'dependencies','chords.json')
+SF=os.path.join(DEPS,'FluidR3.sf2')
+CHORDS=os.path.join(DEPS,'chords.json')
+INPUT = os.path.join(DEPS,'page')
 
-if platform.system()=='Windows':
-    FS=os.path.join(DEPS,'fluidsynth.exe')
-    FM=os.path.join(DEPS,'ffmpeg.exe')
-else:
-    FS=os.path.join(DEPS,'fluidsynth')
-    FM=os.path.join(DEPS,'ffmpeg')
-    
-env=os.environ.copy()
-env['PATH']=env.get('PATH','')+os.pathsep+FS
+def _find_binary(name):
+    system_bin = shutil.which(name)
+    if system_bin:
+        return system_bin
+    if platform.system()=='Windows':
+        return os.path.join(BINS, f'{name}.exe')
+    return os.path.join(BINS, name)
+
+FS = _find_binary('fluidsynth')
+FM = _find_binary('ffmpeg')
+
+# Add both FS and FM directories to PATH
+os.environ['SSL_CERT_FILE'] = certifi.where()
+os.environ['PATH'] += os.pathsep + os.path.dirname(FS)
+os.environ['PATH'] += os.pathsep + os.path.dirname(FM)
+
+env = os.environ.copy()
+env['PATH'] = env.get('PATH', '') + os.pathsep + os.path.dirname(FS) + os.pathsep + os.path.dirname(FM)
 
 FPS=60
 TPQN=480

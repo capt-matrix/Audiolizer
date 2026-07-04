@@ -1,13 +1,32 @@
 import os
+import time
 import urllib.request
+import urllib.error
 
-from assets import ROOT,FONTS,INPUT,DEPS,make,set
+from assets import ROOT,DEPS,INPUT,make,set
 
-def fetch_file(url,dir,dest):
-     dest=os.path.join(dir,dest)
-     os.makedirs(os.path.dirname(dest),exist_ok=True)
-     if not os.path.exists(dest):
-          urllib.request.urlretrieve(url,dest)
+def fetch_file(url, dir, dest, retries=3, timeout=10):
+    dest = os.path.join(dir, dest)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    attempt = 0
+    while attempt < retries:
+        try:
+            if not os.path.exists(dest):
+                urllib.request.urlretrieve(url, dest)
+            return
+        except urllib.error.HTTPError as e:
+            if e.code == 503:
+                attempt += 1
+                if attempt >= retries:
+                    raise
+                time.sleep(2 * attempt)
+            else:
+                raise
+        except Exception:
+            attempt += 1
+            if attempt >= retries:
+                raise
+            time.sleep(2 * attempt)
      
 
 def check():
@@ -32,25 +51,25 @@ def assemble_file(path):
                 break
             with open(chunk_name, 'rb') as chunk:
                 out.write(chunk.read())
-            os.remove(chunk_name)
             idx += 1
+    idx=0
+    while True:
+        chunk_name = os.path.join(dir, f"R-{ext}.{base}-{idx}")
+        if not os.path.exists(chunk_name):
+            break
+        try:
+            os.remove(chunk_name)
+        except PermissionError:
+            time.sleep(1) 
+            os.remove(chunk_name)
+        idx += 1
 def setup():
      make()
     
      deps=[
-         ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/dependencies/ffmpeg.exe',DEPS,'ffmpeg.exe'),
-         ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/dependencies/ffmpeg',DEPS,'ffmpeg'),
-         ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/dependencies/fluidsynth.exe',DEPS,'fluidsynth.exe'),
-         ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/dependencies/fluidsynth',DEPS,'fluidsynth'),
          ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/dependencies/R-sf2.FluidR3-0',DEPS,'R-sf2.FluidR3-0'),
          ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/dependencies/R-sf2.FluidR3-1',DEPS,'R-sf2.FluidR3-1'),
          ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/dependencies/chords.json',DEPS,'chords.json'),
-
-         ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/Fonts/Arexa.otf',FONTS,'Arexa.otf'),
-         ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/Fonts/Exo.otf',FONTS,'Exo.otf'),
-         ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/Fonts/GConce.otf',FONTS,'GConce.otf'),
-         ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/Fonts/Pastone.otf',FONTS,'Pastone.otf'),
-         
          ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/page/index.html',INPUT,'index.html'),
          ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/page/style.css',INPUT,'style.css'),
          ('https://raw.githubusercontent.com/capt-matrix/deps/main/ADLiz/page/script.js',INPUT,'script.js'),
@@ -62,5 +81,4 @@ def setup():
      with open(os.path.join(ROOT,'check'),'w') as check:
           check.write('Audiolizer dependencies fetched\n-.-. .- .--. - .- .. -. ..--.- -- .- - .-. .. -..-')
      set()
-     
-    
+

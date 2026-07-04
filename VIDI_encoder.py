@@ -30,7 +30,7 @@ Colors={
 Fonts=['Arexa.70','Exo.20','GConce.65','Pastone.40']
 
 
-os.environ['PATH'] += os.pathsep + os.path.dirname(FM)    
+
 
 class Lizer():
     def __init__(self,AC:Song):

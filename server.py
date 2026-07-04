@@ -5,6 +5,8 @@ import webbrowser
 import json
 import time
 import re
+import psutil
+import os
 from threading import Lock
 from assets import INPUT, PORT, CONFIG, readb
 
@@ -14,6 +16,7 @@ last_command = None
 last_config = None
 last_acode = None
 last_cli_log = []
+last_active=time.time()
 lock = Lock()
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -22,7 +25,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
           pass
 
      def do_POST(self):
-          global last_command, last_config
+          global last_command, last_config, last_active
           length = int(self.headers.get('Content-Length', 0))
           try:
                data = json.loads(self.rfile.read(length))
@@ -36,7 +39,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     last_command = data.get('command')
                elif self.path == '/config':
                     last_config = data.get('config')
-
+               elif self.path == '/heartbeat':
+                    last_active = time.time() 
           self.send_response(200)
           self.end_headers()
 
@@ -62,8 +66,22 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 class ThreadedServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
      allow_reuse_address = True
      daemon_threads = True
+def monitor():
+     global last_active
+     time.sleep(30)
+     while True:
+          time.sleep(10)
+          with lock:
+               inact_time=time.time() - last_active
+          if inact_time > 120:
+               parentps=psutil.Process(os.getpid())
+               for child in parentps.children(recursive=True):
+                    child.kill()
+               parentps.kill() 
 
 def run():
+     threading.Thread(target=monitor, daemon=True).start()
+
      with ThreadedServer(("", PORT),
           lambda *a, **k: Handler(*a, directory=INPUT, **k)) as srv:
 

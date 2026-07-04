@@ -7,7 +7,7 @@ import os
 import subprocess
 
 
-os.environ['PATH'] += os.pathsep + os.path.dirname(FS)
+
 
 
 class Audio():

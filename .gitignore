@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.venv/
+env/
+
+# macOS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# PyInstaller
+build/
+dist/
+*.spec
+*.exe
+
+# Archives
+*.zip
+*.tar.gz
+*.tgz
+
+# Dependencies (downloaded by setup.py)
+DEPS/
+Fonts/
+page/
+
+# App config & runtime
+app.ico
+ADLiz.exe
+cscript.iss
+license.txt
+ADLiz.zip
